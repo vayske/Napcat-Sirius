@@ -1,0 +1,41 @@
+services:
+    napcat:
+        build:
+            context: ./napcat
+            args:
+                NAPCAT_URL: ${NAPCAT_URL}
+                QQ_URL: ${QQ_URL}
+            tags:
+                - napcat
+        environment:
+            - NAPCAT_UID=${NAPCAT_UID}
+            - NAPCAT_GID=${NAPCAT_GID}
+        ports:
+            - 6099:6099
+        container_name: napcat
+        restart: always
+        image: napcat:latest
+        volumes:
+          - ${SIRIUS_DATA_DIR}/QQ:/app/.config/QQ
+          - ${SIRIUS_DATA_DIR}/napcat:/app/napcat/config
+          - ${SIRIUS_SRC_DIR}:/app/sirius
+    db:
+        image: redis:8.4.0
+        container_name: sirius-redis
+        restart: always
+        command: redis-server --save 60 1 --loglevel warning
+        volumes:
+          - ${SIRIUS_DATA_DIR}/sirius:/data
+    sirius:
+        build:
+            context: ./sirius
+            tags:
+                - sirius
+        depends_on:
+            - napcat
+            - db
+        container_name: sirius
+        image: sirius:latest
+        volumes:
+            - ${SIRIUS_SRC_DIR}:/app/sirius
+        restart: always

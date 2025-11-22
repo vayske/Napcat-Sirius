@@ -1,42 +1,43 @@
-import { NCWebsocket, SendMessageSegment } from "node-napcat-ts";
-import * as fs from "fs";
-import { logger } from "@/utils/logger.js";
-import { SiriusConfig } from "@/utils/definitions.js";
+import { logger } from "./logger.js";
+import { db } from "./database.js"
+import { NCWebsocket, Structs } from "node-napcat-ts";
 
-const CONFIG_FILENAME = "sirius.json";
-const PLUGIN_NAME = "Whitelist";
+const PLUGIN_NAME = "whitelist";
 
-let config!: SiriusConfig;
-
-function setupWhiteList(cfg: SiriusConfig) {
-  logger.info(`[${PLUGIN_NAME}]: 配置插件白名单...`);
-  config = cfg;
+async function registerPlugin(plugin: string, group_id: number) {
+  logger.info(`[${PLUGIN_NAME}] 群聊 [${group_id}] 添加插件 [${plugin}]`);
+  await db.set(`${PLUGIN_NAME}:${group_id}:${plugin}`, '1');
 }
 
-function registerPlugin(plugin: string, group_id: number) {
-  logger.info(`[${PLUGIN_NAME}] Registering Plugin[${plugin}] to Group[${group_id}]`);
-  const whitelist = config.pluginWhiteList;
-  if (!whitelist[plugin]) {
-    whitelist[plugin] = [group_id];
-  } else {
-    whitelist[plugin].push(group_id);
-  }
-  config.pluginWhiteList = whitelist;
-  saveConfig();
+async function unRegisterPlugin(plugin: string, group_id: number) {
+  logger.info(`[${PLUGIN_NAME}] 群聊 [${group_id}] 移除插件 [${plugin}]`);
+  await db.set(`${PLUGIN_NAME}:${group_id}:${plugin}`, '0');
 }
 
-function isRegistered(plugin: string, group_id: number) {
-  const whitelist = config.pluginWhiteList;
-  return (whitelist[plugin] && whitelist[plugin].includes(group_id));
+async function isRegistered(plugin: string, group_id: number) {
+  const status = await db.get(`${PLUGIN_NAME}:${group_id}:${plugin}`);
+  return status === "1";
 }
 
-async function sendGroupMsg(napcat: NCWebsocket, plugin: string, group_id: number, message: SendMessageSegment[]) {
-  if (!isRegistered(plugin, group_id)) return;
-  await napcat.send_group_msg({group_id, message});
+function listenForRegister(napcat: NCWebsocket, plugin: string) {
+  napcat.on("message.group", async context => {
+    if (context.raw_message.includes(`/添加插件 ${plugin}`)) {
+      await registerPlugin(plugin, context.group_id);
+      await napcat.send_group_msg({
+        group_id: context.group_id,
+        message: [Structs.text(`[${plugin}] 已加载`)]
+      });
+    }
+  });
+  napcat.on("message.group", async context => {
+    if (context.raw_message.includes(`/移除插件 ${plugin}`)) {
+      await unRegisterPlugin(plugin, context.group_id);
+      await napcat.send_group_msg({
+        group_id: context.group_id,
+        message: [Structs.text(`[${plugin}] 已卸载`)]
+      });
+    }
+  });
 }
 
-function saveConfig() {
-  fs.writeFileSync(CONFIG_FILENAME, JSON.stringify(config, null, 2), "utf-8");
-}
-
-export { registerPlugin, setupWhiteList, sendGroupMsg };
+export { isRegistered, listenForRegister };

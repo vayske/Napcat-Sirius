@@ -1,6 +1,8 @@
 import axios from "axios";
 import { SendMessageSegment, Structs } from "node-napcat-ts";
+import { logger } from "../../../utils/logger.js";
 
+const PLUGIN_NAME = "linkPreview.twitter";
 const API_BASE = "https://api.x.com/1.1";
 const GRAPHQL_API_BASE = "https://x.com/i/api/graphql";
 const GRAPHQL_ENDPOINT = "2ICDjqPd81tulZcYrtpTuQ/TweetResultByRestId"
@@ -14,6 +16,7 @@ async function previewTweet(url: string) {
   const result = url.match(BASE_REGEX);
   if (!result) return preview;
   const tweetId = result[1];
+  logger.info(`[${PLUGIN_NAME}] Found tweetId [${tweetId}], fetching api...`);
   const data: any = await fetchData(tweetId);
   if (!data) return preview;
   const tweetResult = data["data"]["tweetResult"]["result"];
