@@ -2,6 +2,7 @@ import { NCWebsocket, SendMessageSegment, Structs } from "node-napcat-ts";
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { previewTweet } from "./twitter/index.js";
+import { getMiniAppURL } from "./mini-app/index.js";
 import { isRegistered, listenForRegister } from "../../utils/whitelist.js";
 import { logger } from "../../utils/logger.js";
 
@@ -34,9 +35,24 @@ function linkPreview(napcat: NCWebsocket) {
       }
     });
   });
+  // mini app
+  napcat.on("message.group", async (context) => {
+    const message = context.message;
+    message.forEach(async (msg) => {
+      if (msg.type === "json") {
+        const url = getMiniAppURL(msg.data.data);
+        if (!url) return;
+        let preview = await fetchPreviewData(url);
+        if (preview.length > 0) {
+          logger.info(`[${PLUGIN_NAME}]: sending preview for [${url}] ...`);
+          await napcat.send_group_msg({ group_id: context.group_id, message: preview });
+        }
+      }
+    });
+  });
 }
 
-async function fetchPreviewData(url: string) {
+async function fetchPreviewData(url: string, noURL: boolean = false) {
   const preview: SendMessageSegment[] = [];
   const response = await axios<string>({
     method: "get",
@@ -54,7 +70,7 @@ async function fetchPreviewData(url: string) {
     }
     preview.push(Structs.image(image));
   }
-  if (title) preview.push(Structs.text(`${title} ${link}`));
+  if (title) preview.push(Structs.text(`${title} ${noURL ? "" : link}`));
   return preview;
 }
 
