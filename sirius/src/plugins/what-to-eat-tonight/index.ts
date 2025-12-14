@@ -52,8 +52,23 @@ function dinnerTime(napcat: NCWebsocket) {
   });
   napcat.on("message.group", async (context) => {
     if(!isRegistered(PLUGIN_NAME, context.group_id)) return;
-    // const atElement = context.message.find(element => element.type === "at");
-    // if (!atElement || Number(atElement.data.qq) !== context.self_id) return;
+    if(context.message.length > 1 || context.message[0].type != "text") return;
+    if(context.message[0].data.text.startsWith("/餐厅列表")) {
+      const result = await db.lRange(`${PLUGIN_NAME}:${context.group_id}`, 0, -1);
+      let message = "";
+      result.forEach(restaurant => {
+        message += `${restaurant}\n`;
+      })
+      if(message != "") {
+        await napcat.send_group_msg({
+          group_id: context.group_id,
+          message: [Structs.text(message)]
+        });
+      }
+    }
+  });
+  napcat.on("message.group", async (context) => {
+    if(!isRegistered(PLUGIN_NAME, context.group_id)) return;
     if(context.raw_message.includes("吃啥") || context.raw_message.includes("吃什么")) {
       const restaurant = await findRestaurant(context.group_id);
       await napcat.send_group_msg({

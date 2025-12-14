@@ -1,14 +1,14 @@
 import { GroupMessage } from "node-napcat-ts";
-function parseCommand(command: string, context: GroupMessage) {
+function parseCommand(command: string, context: GroupMessage, split: boolean = false) {
   const args: string[] = [];
   context.message.forEach(msg => {
     if (msg.type === "text" && msg.data.text.includes(command)) {
-      const parameters = msg.data.text.trim().split(" ");
-      parameters.forEach(param => {
-        if (param !== command) {
-          args.push(param);
-        }
-      });
+      const text = msg.data.text.replace(command, "").trim();
+      if (!split) {
+        args.push(text);
+      } else {
+        text.split(" ").forEach(param => args.push(param));
+      }
     }
   });
   return args;
