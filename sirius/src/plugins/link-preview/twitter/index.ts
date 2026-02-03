@@ -1,6 +1,6 @@
 import axios from "axios";
-import { SendMessageSegment, Structs } from "node-napcat-ts";
 import { logger } from "../../../utils/logger.js";
+import Preview from "../definition.js";
 
 const PLUGIN_NAME = "linkPreview.twitter";
 const API_BASE = "https://api.x.com/1.1";
@@ -12,24 +12,43 @@ let guestToken = "";
 let lastFetch: number;
 
 async function previewTweet(url: string) {
-  const preview: SendMessageSegment[] = [];
+  let preview: Preview = {
+    text: [],
+    picture: [],
+    video: []
+  };
   const result = url.match(BASE_REGEX);
   if (!result) return preview;
   const tweetId = result[1];
   logger.info(`[${PLUGIN_NAME}] Found tweetId [${tweetId}], fetching api...`);
   const data: any = await fetchData(tweetId);
-  if (!data) return preview;
+  if (!data?.data?.tweetResult?.result) return preview;
   const tweetResult = data["data"]["tweetResult"]["result"];
-  const nickname = tweetResult["core"]["user_results"]["result"]["legacy"]["name"];
-  const screenName = tweetResult["core"]["user_results"]["result"]["legacy"]["screen_name"];
-  const fulltext = tweetResult["legacy"]["full_text"];
-  const media = tweetResult["legacy"]["entities"]["media"];
-  preview.push(Structs.text(`${nickname}\n`));
-  preview.push(Structs.text(`@${screenName}\n`));
-  preview.push(Structs.text(fulltext));
+  const userLegacy = tweetResult["core"]?.["user_results"]?.["result"]?.["legacy"];
+  const tweetLegacy = tweetResult["legacy"];
+  if (!tweetLegacy || !userLegacy) return preview;
+  if (tweetLegacy["possibly_sensitive"] == true) {
+    logger.info(`[${PLUGIN_NAME}] Sensitive tweet [${tweetId}], stopping...`);
+    return preview;
+  }
+  const nickname: string = userLegacy["name"];
+  const screenName: string = userLegacy["screen_name"];
+  const fulltext: string = tweetLegacy["full_text"];
+  preview["text"] = [`${nickname}\n@${screenName}\n${fulltext.replace(/https:\/\/t\.co\/[a-zA-Z0-9]+$/, '').trim()}`];
+  const media = tweetLegacy["extended_entities"]?.["media"] || tweetLegacy["entities"]?.["media"] || [];
   media.forEach((m: any) => {
-    if (m["type"] === "photo") {
-      preview.push(Structs.image(m["media_url_https"]))
+    switch(m["type"]) {
+      case "photo":
+        preview["picture"].push(m["media_url_https"]);
+        break;
+      case "video":
+      case "animated_gif":
+        const variants: any[] = m["video_info"]["variants"];
+        const bestVideo = variants
+          .filter(v => v["content_type"] === "video/mp4")
+          .sort((a: any, b: any) => (b["bitrate"] || 0) - (a["bitrate"] || 0))[0]
+        if (bestVideo) preview["video"].push(bestVideo["url"]);
+        break;
     }
   });
   return preview;
@@ -100,13 +119,14 @@ function buildGraphQLQuery(media_id: string) {
       "longform_notetweets_inline_media_enabled": true,
       "responsive_web_graphql_exclude_directive_enabled": true,
       "verified_phone_label_enabled": false,
-      "responsive_web_media_download_video_enabled": false,
+      "responsive_web_media_download_video_enabled": true,
       "responsive_web_graphql_skip_user_profile_image_extensions_enabled": false,
       "responsive_web_graphql_timeline_navigation_enabled": true,
       "responsive_web_enhance_cards_enabled": false,
     }),
     "fieldToggles": JSON.stringify({
       "withArticleRichContentState": false,
+      "withArticlePlainText": false,
     }),
   }
 }

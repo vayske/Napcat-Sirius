@@ -3,13 +3,14 @@ import { logger } from "../../../utils/logger.js";
 const PLUGIN_NAME = "linkPreview.miniapp";
 
 function getMiniAppURL(data: string) {
+  let url = "";
   try {
     const dataObject = JSON.parse(data);
-    const url: string = dataObject["meta"]["detail_1"]["qqdocurl"];
-    return url;
+    const url = dataObject["meta"]["detail_1"]["qqdocurl"];
   } catch (error) {
     logger.error(`[${PLUGIN_NAME}]:\terror [${error}]`)
-    return "";
+  } finally {
+    return url;
   }
 }
 
