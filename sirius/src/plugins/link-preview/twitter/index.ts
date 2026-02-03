@@ -27,14 +27,15 @@ async function previewTweet(url: string) {
   const userLegacy = tweetResult["core"]?.["user_results"]?.["result"]?.["legacy"];
   const tweetLegacy = tweetResult["legacy"];
   if (!tweetLegacy || !userLegacy) return preview;
-  if (tweetLegacy["possibly_sensitive"] == true) {
-    logger.info(`[${PLUGIN_NAME}] Sensitive tweet [${tweetId}], stopping...`);
-    return preview;
-  }
   const nickname: string = userLegacy["name"];
   const screenName: string = userLegacy["screen_name"];
   const fulltext: string = tweetLegacy["full_text"];
   preview["text"] = [`${nickname}\n@${screenName}\n${fulltext.replace(/https:\/\/t\.co\/[a-zA-Z0-9]+$/, '').trim()}`];
+  // stop from here if sensitive
+  if (tweetLegacy["possibly_sensitive"] == true) {
+    logger.info(`[${PLUGIN_NAME}] Sensitive tweet [${tweetId}], stopping...`);
+    return preview;
+  }
   const media = tweetLegacy["extended_entities"]?.["media"] || tweetLegacy["entities"]?.["media"] || [];
   media.forEach((m: any) => {
     switch(m["type"]) {
@@ -92,6 +93,7 @@ function setBaseHeader(): Object {
   const bearerToken = AUTH;
   return {
     "Authorization": `Bearer ${bearerToken}`,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   };
 }
 
