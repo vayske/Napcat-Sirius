@@ -4,40 +4,55 @@ import { NCWebsocket, Structs } from "node-napcat-ts";
 
 const PLUGIN_NAME = "whitelist";
 
-async function registerPlugin(plugin: string, group_id: number) {
-  logger.info(`[${PLUGIN_NAME}] 群聊 [${group_id}] 添加插件 [${plugin}]`);
-  await db.set(`${PLUGIN_NAME}:${group_id}:${plugin}`, '1');
+async function subscribePlugin(plugin: string, group_id: number) {
+  logger.info(`[${PLUGIN_NAME}] 群 [${group_id}] 开启插件 [${plugin}]`);
+  const key = `${PLUGIN_NAME}:${plugin}`;
+  await db.sAdd(key, group_id.toString());
 }
 
-async function unRegisterPlugin(plugin: string, group_id: number) {
-  logger.info(`[${PLUGIN_NAME}] 群聊 [${group_id}] 移除插件 [${plugin}]`);
-  await db.set(`${PLUGIN_NAME}:${group_id}:${plugin}`, '0');
+async function unSubscribePlugin(plugin: string, group_id: number) {
+  logger.info(`[${PLUGIN_NAME}] 群 [${group_id}] 移除插件 [${plugin}]`);
+  const key = `${PLUGIN_NAME}:${plugin}`;
+  await db.sRem(key, group_id.toString());
 }
 
-async function isRegistered(plugin: string, group_id: number) {
-  const status = await db.get(`${PLUGIN_NAME}:${group_id}:${plugin}`);
-  return status === "1";
+async function isSubscribed(plugin: string, group_id: number) {
+  const key = `${PLUGIN_NAME}:${plugin}`;
+  const status = await db.sIsMember(key, group_id.toString());
+  return status;
 }
 
-function listenForRegister(napcat: NCWebsocket, plugin: string) {
+async function getSubscribedGroups(plugin: string) {
+  const key = `${PLUGIN_NAME}:${plugin}`;
+  try {
+    const members = await db.sMembers(key);
+    return members.map(id => parseInt(id));
+  } catch (error) {
+    logger.error(`[${PLUGIN_NAME}]:\t获取[${plugin}]订阅列表失败: ${error}`);
+    return [];
+  }
+}
+
+function listenForSubscription(napcat: NCWebsocket, plugin: string) {
   napcat.on("message.group", async context => {
-    if (context.raw_message.includes(`/添加插件 ${plugin}`)) {
-      await registerPlugin(plugin, context.group_id);
+    const text = context.raw_message.trim();
+    if (text === `/添加插件 ${plugin}`) {
+      await subscribePlugin(plugin, context.group_id);
       await napcat.send_group_msg({
         group_id: context.group_id,
-        message: [Structs.text(`[${plugin}] 已加载`)]
+        message: [Structs.text(`已添加[${plugin}]插件`)]
       });
+      return;
     }
-  });
-  napcat.on("message.group", async context => {
-    if (context.raw_message.includes(`/移除插件 ${plugin}`)) {
-      await unRegisterPlugin(plugin, context.group_id);
+    if (text === `/移除插件 ${plugin}`) {
+      await unSubscribePlugin(plugin, context.group_id);
       await napcat.send_group_msg({
         group_id: context.group_id,
-        message: [Structs.text(`[${plugin}] 已卸载`)]
+        message: [Structs.text(`已移除[${plugin}]插件`)]
       });
+      return;
     }
   });
 }
 
-export { isRegistered, listenForRegister };
+export { isSubscribed, listenForSubscription, getSubscribedGroups };

@@ -1,9 +1,10 @@
 import { NCWebsocket, Structs } from "node-napcat-ts";
-import { listenForRegister, isRegistered } from "../../utils/whitelist.js";
+import { listenForSubscription, isSubscribed } from "../../utils/whitelist.js";
 import { db } from "../../utils/database.js";
 import { logger } from "../../utils/logger.js";
 import { parseCommand } from "../../utils/helper.js";
 import path from "path";
+import { subscribe } from "diagnostics_channel";
 
 
 const PLUGIN_NAME = "whatToEatTonight";
@@ -11,9 +12,10 @@ const NO_RESULT_MSG = "吃…吃我一拳！";
 const DIRNAME = path.dirname(import.meta.url);
 
 function dinnerTime(napcat: NCWebsocket) {
-  listenForRegister(napcat, PLUGIN_NAME);
+  listenForSubscription(napcat, PLUGIN_NAME);
   napcat.on("message.group", async (context) => {
-    if(!isRegistered(PLUGIN_NAME, context.group_id)) return;
+    const subscribed = await isSubscribed(PLUGIN_NAME, context.group_id)
+    if(!subscribed) return;
 
     const { command, arg, rawText } = parseCommand(context);
     if (!command) {
@@ -37,6 +39,8 @@ function dinnerTime(napcat: NCWebsocket) {
   });
 }
 
+
+// handlers
 async function handleAdd(napcat: NCWebsocket, group: number, restaurant: string) {
   if(!restaurant) {
     await napcat.send_group_msg({

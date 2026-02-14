@@ -3,7 +3,7 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import { previewTweet } from "./twitter/index.js";
 import { getMiniAppURL } from "./mini-app/index.js";
-import { isRegistered, listenForRegister } from "../../utils/whitelist.js";
+import { isSubscribed, listenForSubscription } from "../../utils/whitelist.js";
 import { logger } from "../../utils/logger.js";
 import Preview from "./definition.js";
 
@@ -12,10 +12,10 @@ const URL_REGEX = /(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0
 
 function linkPreview(napcat: NCWebsocket) {
   // plugin registration listener
-  listenForRegister(napcat, PLUGIN_NAME);
+  listenForSubscription(napcat, PLUGIN_NAME);
   napcat.on("message.group", async (context) => {
-    const register = await isRegistered(PLUGIN_NAME, context.group_id);
-    if (!register ) return;
+    const subscribed = await isSubscribed(PLUGIN_NAME, context.group_id);
+    if (!subscribed ) return;
 
     const message = context.message;
 
@@ -112,10 +112,6 @@ async function fetchPreviewData(url: string, noURL: boolean = false) {
   }
   if (title) preview["text"].push(`${title} ${noURL ? "" : link}`);
   return preview;
-}
-
-function isEmptyPreview(preview: Preview) {
-  return Object.values(preview).every(arr => !arr || arr.length === 0);
 }
 
 export { PLUGIN_NAME, linkPreview as initPlugin };

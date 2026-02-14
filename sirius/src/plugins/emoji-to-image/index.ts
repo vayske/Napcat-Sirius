@@ -1,12 +1,13 @@
 import { NCWebsocket, Structs } from "node-napcat-ts";
-import { isRegistered, listenForRegister } from "../../utils/whitelist.js";
+import { isSubscribed, listenForSubscription } from "../../utils/whitelist.js";
 
 const PLUGIN_NAME = "emojiToImage";
 
 function emojiToImage(npacat: NCWebsocket) {
-  listenForRegister(npacat, PLUGIN_NAME);
+  listenForSubscription(npacat, PLUGIN_NAME);
   npacat.on("message.group", async (context) => {
-    if (!await isRegistered(PLUGIN_NAME, context.group_id)) return;
+    const subscribed = await isSubscribed(PLUGIN_NAME, context.group_id);
+    if (!subscribed) return;
     const message = context.message;
     if (message[0].type === "reply") {
       const lastElement = message.at(-1);
