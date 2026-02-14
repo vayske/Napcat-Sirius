@@ -4,8 +4,6 @@ import { db } from "../../utils/database.js";
 import { logger } from "../../utils/logger.js";
 import { parseCommand } from "../../utils/helper.js";
 import path from "path";
-import { subscribe } from "diagnostics_channel";
-
 
 const PLUGIN_NAME = "whatToEatTonight";
 const NO_RESULT_MSG = "吃…吃我一拳！";
