@@ -5,7 +5,7 @@ export SIRIUS_SRC_DIR=$filedir/sirius
 export NAPCAT_UID=$(id -u)
 export NAPCAT_GID=$(id -g)
 
-export NAPCAT_URL="https://github.com/NapNeko/NapCatQQ/releases/download/v4.10.47/NapCat.Shell.zip"
+export NAPCAT_URL="https://github.com/NapNeko/NapCatQQ/releases/download/v4.15.18/NapCat.Shell.zip"
 export QQ_URL="https://dldir1.qq.com/qqfile/qq/QQNT/94704804/linuxqq_3.2.23-44343_arm64.deb"
 
 cd ${filedir}/docker

@@ -1,17 +1,31 @@
 import { GroupMessage } from "node-napcat-ts";
-function parseCommand(command: string, context: GroupMessage, split: boolean = false) {
-  const args: string[] = [];
-  context.message.forEach(msg => {
-    if (msg.type === "text" && msg.data.text.includes(command)) {
-      const text = msg.data.text.replace(command, "").trim();
-      if (!split) {
-        args.push(text);
-      } else {
-        text.split(" ").forEach(param => args.push(param));
-      }
-    }
-  });
-  return args;
+
+interface CommandResult {
+  command :string;
+  arg: string;
+  rawText: string;
+}
+
+function parseCommand(context: GroupMessage): CommandResult {
+  const text = context.message.find(msg => msg.type === "text")?.data.text?.trim();
+  const result: CommandResult = {
+    command: "",
+    arg: "",
+    rawText: ""
+  };
+  if (!text) return result;
+  result.rawText = text;
+  if (!text.startsWith("/")) return result;
+
+  const firstSpaceIndex = text.indexOf(" ");
+  if (firstSpaceIndex === -1) {
+    result.command = text;
+    return result;
+  }
+
+  result.command = text.substring(0, firstSpaceIndex);
+  result.arg = text.substring(firstSpaceIndex+1).trim();
+  return result;
 }
 
 export { parseCommand };
