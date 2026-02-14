@@ -21,7 +21,7 @@ const TARGET_HOUR = 0;
 
 function weather(napcat: NCWebsocket) {
   listenForSubscription(napcat, PLUGIN_NAME);
-  schedule.scheduleJob("0 11 * * * *", async () => {
+  schedule.scheduleJob("0 0 * * * *", async () => {
     // 传入 PLUGIN_NAME 以便去查找订阅名单
     await runHourlyCheck(napcat);
   });
